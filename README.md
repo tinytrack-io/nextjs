@@ -1,6 +1,8 @@
 # @tinytrack/nextjs
 
-TinyTrack analytics for **Next.js 16+**. Counts document requests in `proxy.ts` and serves the tracking endpoints on your own domain, on any host that supports Next.js Proxy.
+[TinyTrack](https://tinytrack.io) analytics for Next.js based deployments.
+
+A proxy that counts pageviews server-side, auto-injects the TinyTrack script, and serves the tracker and beacons first-party.
 
 ## Install
 

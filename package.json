@@ -1,6 +1,6 @@
 {
 	"name": "@tinytrack/nextjs",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "TinyTrack server-side analytics, first-party tracking endpoints, and automatic browser tracker injection for Next.js.",
 	"type": "module",
 	"main": "./dist/index.js",
