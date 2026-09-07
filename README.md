@@ -42,9 +42,29 @@ This appends the client loader to [`instrumentationClientInject`](https://nextjs
 
 Also accepts `domain`, `enabled`, `allowLocalhost`, and `nonce`.
 
+For **Next.js 16.0–16.2**, use the generated browser settings with an explicit client import:
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next';
+import { withTinyTrack } from '@tinytrack/nextjs/next';
+
+const nextConfig: NextConfig = {};
+
+export default {
+	...nextConfig,
+	env: withTinyTrack(nextConfig).env,
+};
+```
+
+```ts
+// instrumentation-client.ts — alongside app/ or inside src/
+import '@tinytrack/nextjs/client';
+```
+
 ## Manual installation
 
-For Next.js 16.0–16.2, or to render browser settings per request, add a `next/script` to your root layout instead:
+To render browser settings per request, add a `next/script` to your root layout instead. Set `TINYTRACK_DOMAIN` to your site's public hostname for this manual setup; the tracker requires `data-domain`:
 
 ```tsx
 import Script from 'next/script';
@@ -52,6 +72,7 @@ import Script from 'next/script';
 <Script
 	src="/_tinytrack/tracker.js"
 	data-website-id={process.env.TINYTRACK_WEBSITE_ID}
+	data-domain={process.env.TINYTRACK_DOMAIN}
 	data-api="/_tinytrack/track"
 	data-skip-initial="true"
 	strategy="afterInteractive"
@@ -71,13 +92,10 @@ Pass options to `createTinyTrackProxy()`, or use environment variables. Options 
 | `pathPrefix` †      | `TINYTRACK_PATH_PREFIX`      | `/_tinytrack`                  |
 | `serverPageviews` † | `TINYTRACK_SERVER_PAGEVIEWS` | `true`                         |
 | `enabled` †         | `TINYTRACK_ENABLED`          | `true`                         |
-| `trustProxy`        | `TINYTRACK_TRUST_PROXY`      | `0`                            |
+| `trustProxy`        | `TINYTRACK_TRUST_PROXY`      | `1`                            |
 | `geoHeaders`        | `TINYTRACK_GEO_HEADERS`      | None                           |
 | `debug`             | `TINYTRACK_DEBUG`            | `false`                        |
 
 † also read by `withTinyTrack()` at build time.
 
 Browser and Proxy settings must agree on website ID, paths, and pageview mode. For browser-only pageviews, set `serverPageviews: false` and `data-skip-initial="false"`.
-
-Next.js exposes no socket address: `trustProxy` counts trusted rightmost `X-Forwarded-For` entries, so set it only if your host controls that header. `0` omits the visitor IP. Location headers map like `geoHeaders: { country_iso: 'x-geo-country' }`.
-

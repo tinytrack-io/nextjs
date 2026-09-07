@@ -34,9 +34,8 @@ const child = spawn(
 			TINYTRACK_ENABLED: 'true',
 			TINYTRACK_SERVER_PAGEVIEWS: 'true',
 			TINYTRACK_PATH_PREFIX: '/_tinytrack',
-			TINYTRACK_TRUST_PROXY: '1',
-			TINYTRACK_GEO_HEADERS:
-				'country_iso:x-geo-country,region:x-geo-region,city_name:x-geo-city,latitude:x-geo-latitude,longitude:x-geo-longitude',
+			TINYTRACK_TRUST_PROXY: undefined,
+			TINYTRACK_GEO_HEADERS: undefined,
 		},
 		stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
 	},
@@ -53,14 +52,10 @@ child.on('message', (message) => {
 	if (message.tinytrack) records.push(message.tinytrack);
 });
 
-// One proxy hop supplies the visitor address and location.
+// Standard ingress metadata; no platform-specific headers or environment settings.
 const proxied = {
 	'x-forwarded-for': '203.0.113.42',
-	'x-geo-country': 'AT',
-	'x-geo-region': '9',
-	'x-geo-city': 'Wien',
-	'x-geo-latitude': '48.2082',
-	'x-geo-longitude': '16.3738',
+	'user-agent': 'Mozilla/5.0 TinyTrackTest',
 };
 
 async function waitFor(predicate, message) {
@@ -83,10 +78,14 @@ try {
 	assert.doesNotMatch(html, /<script[^>]+src="\/_tinytrack\/tracker\.js"/);
 	await waitFor(() => records.length === 1, 'Server pageview was not forwarded');
 	assert.equal(records[0].headers['x-tinytrack-ip'], '203.0.113.42');
-	assert.equal(records[0].body.events[0].country_iso, 'AT');
-	assert.equal(records[0].body.events[0].region, '9');
-	assert.equal(records[0].body.events[0].city_name, 'Wien');
+	assert.equal(records[0].body.events[0].country_iso, undefined);
+	assert.equal(records[0].body.events[0].region, undefined);
+	assert.equal(records[0].body.events[0].city_name, undefined);
+	assert.equal(records[0].body.events[0].latitude, undefined);
+	assert.equal(records[0].body.events[0].longitude, undefined);
 	assert.equal(records[0].body.events[0].websiteId, 'wid_smoke');
+	assert.equal(records[0].headers['x-tinytrack-proxy'], 'nextjs');
+	assert.equal(records[0].headers['user-agent'], 'Mozilla/5.0 TinyTrackTest');
 	assert.equal(records[0].body.events[0].url, origin + '/');
 
 	// Run the production client bundles so tree shaking or missing build-time settings cannot silently disable the loader.
@@ -135,8 +134,13 @@ try {
 	});
 	assert.equal(beacon.status, 204);
 	await waitFor(() => records.length === 2, 'Browser event was not forwarded');
-	assert.equal(records[1].body.events[0].country_iso, 'AT');
+	assert.equal(records[1].body.events[0].country_iso, undefined);
+	assert.equal(records[1].body.events[0].city_name, undefined);
+	assert.equal(records[1].body.events[0].latitude, undefined);
+	assert.equal(records[1].body.events[0].longitude, undefined);
 	assert.equal(records[1].body.events[0].websiteId, 'wid_smoke');
+	assert.equal(records[1].headers['x-tinytrack-proxy'], 'nextjs');
+	assert.equal(records[1].headers['user-agent'], 'Mozilla/5.0 TinyTrackTest');
 	assert.equal(records[1].headers['x-tinytrack-ip'], records[0].headers['x-tinytrack-ip']);
 	assert.equal(
 		(
@@ -154,7 +158,7 @@ try {
 	assert.equal(posted.status, 200);
 	assert.deepEqual(await posted.json(), { ok: true, body: 'order=123' });
 	console.log(
-		'Next.js smoke checks passed: automatic browser loader, pageviews, IP/geo forwarding, first-party routes, filtering, and browser batches.',
+		'Next.js smoke checks passed: automatic browser loader, pageviews, visitor IP/user-agent forwarding, first-party routes, filtering, and browser batches.',
 	);
 } finally {
 	browser?.window.close();

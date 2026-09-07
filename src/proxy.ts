@@ -2,7 +2,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server
 import { handleTinyTrackRequest } from './tracking';
 import type { TinyTrackOptions } from './types';
 
-/** Use the returned function as the `proxy` export in your Next.js proxy.ts. */
+/** Export as `proxy` in Next.js proxy.ts. Visitor forwarding uses standard request headers. */
 export function createTinyTrackProxy(options: TinyTrackOptions = {}) {
 	return async function tinyTrackProxy(request: NextRequest, event: NextFetchEvent): Promise<Response> {
 		return (await handleTinyTrackRequest(request, event, options)) ?? NextResponse.next();

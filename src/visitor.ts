@@ -83,6 +83,7 @@ export function forwardingHeaders(request: Request, visitor: VisitorContext): He
 	const headers = new Headers({
 		'content-type': 'application/json',
 		'user-agent': request.headers.get('user-agent') ?? '',
+		'X-TinyTrack-Proxy': 'nextjs',
 	});
 	if (visitor.ip) headers.set('X-TinyTrack-IP', visitor.ip);
 	return headers;

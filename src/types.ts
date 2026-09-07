@@ -24,10 +24,11 @@ export interface TinyTrackOptions {
 	debug?: boolean;
 	/**
 	 * Number of trusted rightmost entries in X-Forwarded-For. `true` means one.
-	 * Default 0: omit the IP; NextRequest does not expose the socket address.
+	 * Default 1. Set to the number of trusted ingress hops, or 0 to omit the IP.
+	 * NextRequest exposes no socket address.
 	 */
 	trustProxy?: boolean | number;
-	/** Header names carrying visitor location, e.g. `{ country_iso: 'cf-ipcountry' }`. */
+	/** Optional custom location headers. Default none; ingestion resolves location from the visitor IP. */
 	geoHeaders?: GeoHeaderMap;
 	/** Server-side only: storage for the tracker asset. Defaults to a per-process cache. */
 	cache?: TrackerCache;

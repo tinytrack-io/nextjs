@@ -9,6 +9,9 @@ function loadTracker(attributes: ReturnType<typeof getTrackerAttributes>) {
 	for (const [name, value] of Object.entries(attributes)) {
 		script.setAttribute(name, value === true ? '' : String(value));
 	}
+	// tracker.js requires data-domain; resolve the default in the browser when
+	// no public hostname was supplied at build time.
+	if (!attributes['data-domain']) script.setAttribute('data-domain', document.location.hostname.replace(/^www\./, ''));
 	script.async = true;
 	// Next.js propagates a request's CSP nonce to its own scripts. Reuse it when no explicit nonce was supplied.
 	const nonce = attributes.nonce || document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;

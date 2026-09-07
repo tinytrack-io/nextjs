@@ -75,11 +75,46 @@ describe('Next.js Proxy integration', () => {
 		expect((await events(calls[0]))[0].websiteId).toBe('wid_environment');
 		expect(calls[0].headers.get('x-tinytrack-ip')).toBe('203.0.113.42');
 	});
-	it('omits visitor IP unless forwarding headers are explicitly trusted', async () => {
+	it('omits visitor IP when forwarding headers are explicitly untrusted', async () => {
 		const { calls } = mockFetch();
 		const bg = invocation();
-		await createTinyTrackProxy({ websiteId: 'wid_test' })(documentRequest('/'), bg.event);
+		await createTinyTrackProxy({ websiteId: 'wid_test', trustProxy: 0 })(documentRequest('/'), bg.event);
 		await bg.drain();
+		expect(calls[0].headers.has('x-tinytrack-ip')).toBe(false);
+	});
+	it('forwards distinct visitors from standard headers on server pageviews and browser events', async () => {
+		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
+		const { calls } = mockFetch();
+		const bg = invocation();
+		const visitors = ['203.0.113.42', '198.51.100.7'];
+		for (const ip of visitors) {
+			const headers = { 'x-forwarded-for': ip };
+			await exampleProxy(documentRequest('/', headers), bg.event);
+			await exampleProxy(
+				request('/_tinytrack/track', { method: 'POST', headers, body: '{"event":"page_view","city_name":"wrong city"}' }),
+				bg.event,
+			);
+		}
+		await bg.drain();
+		expect(calls).toHaveLength(4);
+		for (const [index, outgoing] of calls.entries()) {
+			expect(outgoing.headers.get('x-tinytrack-ip')).toBe(visitors[Math.floor(index / 2)]);
+			expect(outgoing.headers.get('user-agent')).toBe('Mozilla/5.0 TinyTrackTest');
+			expect(outgoing.headers.get('x-tinytrack-proxy')).toBe('nextjs');
+			const [event] = await events(outgoing);
+			expect(event.websiteId).toBe('wid_environment');
+			for (const field of ['country_iso', 'region', 'city_name', 'latitude', 'longitude']) expect(event).not.toHaveProperty(field);
+		}
+	});
+	it('marks forwarded events even when the visitor IP is missing', async () => {
+		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
+		const { calls } = mockFetch();
+		const bg = invocation();
+		const incoming = documentRequest('/');
+		incoming.headers.delete('x-forwarded-for');
+		await exampleProxy(incoming, bg.event);
+		await bg.drain();
+		expect(calls[0].headers.get('x-tinytrack-proxy')).toBe('nextjs');
 		expect(calls[0].headers.has('x-tinytrack-ip')).toBe(false);
 	});
 	it('continues RSC requests and prefetches without scheduling server pageviews', async () => {

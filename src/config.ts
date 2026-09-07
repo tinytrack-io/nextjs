@@ -24,7 +24,8 @@ export function resolveTrustProxy(option: boolean | number | undefined, value: s
 		return option;
 	}
 	const raw = value?.trim().toLowerCase();
-	if (!raw || raw === 'false') return 0;
+	if (!raw) return 1;
+	if (raw === 'false') return 0;
 	if (raw === 'true') return 1;
 	const hops = Number(raw);
 	if (!Number.isInteger(hops) || hops < 0) throw new Error('TINYTRACK_TRUST_PROXY must be true, false, or a hop count');
