@@ -13,7 +13,7 @@ describe('public origin behind a reverse proxy', () => {
 			},
 		});
 		expect(getRequestUrl(request, 1).href).toBe('https://www.site.example/pricing?utm_source=x');
-		expect(resolveConfig(request, { trustProxy: 1 }, {}).domain).toBe('site.example');
+		expect(resolveConfig(request, { trustProxy: 1 }, {}).domain).toBe('www.site.example');
 		expect(isSameOrigin(request, 1)).toBe(true);
 	});
 	it('rejects an unrelated origin even if the request URL is internal', () => {

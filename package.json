@@ -1,6 +1,6 @@
 {
 	"name": "@tinytrack/nextjs",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "TinyTrack server-side analytics, first-party tracking endpoints, and automatic browser tracker injection for Next.js.",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -26,6 +26,16 @@
 			"types": "./dist/client.d.ts",
 			"import": "./dist/client.js",
 			"default": "./dist/client.js"
+		},
+		"./react": {
+			"types": "./dist/react.d.ts",
+			"import": "./dist/react.js",
+			"default": "./dist/react.js"
+		},
+		"./react/client": {
+			"types": "./dist/react-client.d.ts",
+			"import": "./dist/react-client.js",
+			"default": "./dist/react-client.js"
 		}
 	},
 	"files": [
@@ -47,16 +57,11 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"format:check": "prettier --check .",
-		"example:dev": "npm run dev --workspace @tinytrack/nextjs-example",
-		"example:build": "npm run build --workspace @tinytrack/nextjs-example",
-		"example:smoke": "node scripts/smoke-nextjs.mjs",
 		"prepublishOnly": "npm run typecheck && npm test && npm run build"
 	},
-	"workspaces": [
-		"examples/nextjs"
-	],
 	"peerDependencies": {
-		"next": "^16.0.0"
+		"next": "^14.2.35 || ^16.0.0",
+		"react": "^18.2.0 || ^19.0.0"
 	},
 	"devDependencies": {
 		"@types/jsdom": "^30.0.0",

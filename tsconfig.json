@@ -15,9 +15,11 @@
 			"@tinytrack/nextjs": ["./src/index.ts"],
 			"@tinytrack/nextjs/script": ["./src/script.ts"],
 			"@tinytrack/nextjs/next": ["./src/next.ts"],
-			"@tinytrack/nextjs/client": ["./src/client.ts"]
+			"@tinytrack/nextjs/client": ["./src/client.ts"],
+			"@tinytrack/nextjs/react": ["./src/react.ts"],
+			"@tinytrack/nextjs/react/client": ["./src/react-client.ts"]
 		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "tsup.config.ts", "vitest.config.ts"],
-	"exclude": ["node_modules", "dist", "examples"]
+	"exclude": ["node_modules", "dist"]
 }

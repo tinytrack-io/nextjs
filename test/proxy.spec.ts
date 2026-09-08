@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse, type NextFetchEvent, type NextProxy } from 'next/server.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import createTinyTrackProxy, { createMemoryCache } from '../src/index';
-import { proxy as exampleProxy, config } from '../examples/nextjs/proxy';
+import createTinyTrackProxy, { createMemoryCache, createTinyTrackMiddleware, withTinyTrackMiddleware } from '../src/index';
 import { unstable_doesMiddlewareMatch as doesProxyMatch } from 'next/experimental/testing/server.js';
 import { background, documentRequest, events, mockFetch, OPTIONS, request } from './helpers';
 
-vi.mock('@tinytrack/nextjs', () => import('../src/index'));
+const defaultProxy = createTinyTrackProxy();
 
 beforeEach(() => {
 	for (const key of Object.keys(process.env).filter((key) => key.startsWith('TINYTRACK_'))) vi.stubEnv(key, undefined);
@@ -18,6 +17,46 @@ function invocation() {
 }
 
 describe('Next.js Proxy integration', () => {
+	it('can be exported as Next.js 14 middleware', async () => {
+		const bg = invocation();
+		const response = await createTinyTrackMiddleware({ enabled: false })(documentRequest(), bg.event);
+		expect(response.headers.get('x-middleware-next')).toBe('1');
+	});
+
+	it('preserves existing middleware redirects, cookies, and request bodies', async () => {
+		const { calls } = mockFetch();
+		const bg = invocation();
+		const redirect = NextResponse.redirect(new URL('/login', 'https://site.example'));
+		redirect.cookies.set('session', 'existing');
+		const existing = vi.fn(async (incoming: NextRequest) => {
+			expect(await incoming.text()).toBe('order=123');
+			return redirect;
+		});
+		const incoming = request('/checkout', { method: 'POST', body: 'order=123' });
+		expect(await withTinyTrackMiddleware(existing, OPTIONS)(incoming, bg.event)).toBe(redirect);
+		expect(existing).toHaveBeenCalledExactlyOnceWith(incoming, bg.event);
+		expect(calls).toHaveLength(0);
+	});
+
+	it('serves tracking endpoints before existing middleware and counts ordinary pages once', async () => {
+		const { calls } = mockFetch((outgoing) =>
+			new URL(outgoing.url).pathname === '/tracker.js' ? new Response('window.tracker = true;') : new Response(null, { status: 204 }),
+		);
+		const bg = invocation();
+		const existing = vi.fn(() => NextResponse.next());
+		const middleware = withTinyTrackMiddleware(existing, { ...OPTIONS, cache: createMemoryCache() });
+		const script = await middleware(request('/_tinytrack/tracker.js'), bg.event);
+		expect(await script?.text()).toBe('window.tracker = true;');
+		const beacon = await middleware(request('/_tinytrack/track', { method: 'POST', body: '{"event":"scroll_depth"}' }), bg.event);
+		expect(beacon?.status).toBe(204);
+		expect(existing).not.toHaveBeenCalled();
+		await middleware(documentRequest('/about'), bg.event);
+		await bg.drain();
+		expect(existing).toHaveBeenCalledOnce();
+		expect(calls).toHaveLength(3);
+		expect((await events(calls[2]))[0].event).toBe('page_view');
+	});
+
 	it('returns NextResponse.next while registering analytics with this invocation’s event', async () => {
 		let finish!: (response: Response) => void;
 		const { calls } = mockFetch(
@@ -65,12 +104,12 @@ describe('Next.js Proxy integration', () => {
 		expect((await events(calls[1]))[0].websiteId).toBe('wid_test');
 		await bg.drain();
 	});
-	it('uses request-time environment settings in the exported example proxy', async () => {
+	it('reads environment settings at request time in a proxy created without options', async () => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
 		vi.stubEnv('TINYTRACK_TRUST_PROXY', '1');
 		const { calls } = mockFetch();
 		const bg = invocation();
-		await exampleProxy(documentRequest('/'), bg.event);
+		await defaultProxy(documentRequest('/'), bg.event);
 		await bg.drain();
 		expect((await events(calls[0]))[0].websiteId).toBe('wid_environment');
 		expect(calls[0].headers.get('x-tinytrack-ip')).toBe('203.0.113.42');
@@ -89,8 +128,8 @@ describe('Next.js Proxy integration', () => {
 		const visitors = ['203.0.113.42', '198.51.100.7'];
 		for (const ip of visitors) {
 			const headers = { 'x-forwarded-for': ip };
-			await exampleProxy(documentRequest('/', headers), bg.event);
-			await exampleProxy(
+			await defaultProxy(documentRequest('/', headers), bg.event);
+			await defaultProxy(
 				request('/_tinytrack/track', { method: 'POST', headers, body: '{"event":"page_view","city_name":"wrong city"}' }),
 				bg.event,
 			);
@@ -112,7 +151,7 @@ describe('Next.js Proxy integration', () => {
 		const bg = invocation();
 		const incoming = documentRequest('/');
 		incoming.headers.delete('x-forwarded-for');
-		await exampleProxy(incoming, bg.event);
+		await defaultProxy(incoming, bg.event);
 		await bg.drain();
 		expect(calls[0].headers.get('x-tinytrack-proxy')).toBe('nextjs');
 		expect(calls[0].headers.has('x-tinytrack-ip')).toBe(false);
@@ -155,6 +194,7 @@ describe('Next.js Proxy integration', () => {
 		expect(calls).toHaveLength(0);
 	});
 	it('uses a static matcher that includes first-party tracking and excludes Next assets', () => {
+		const config = { matcher: ['/((?!_next/static|_next/image).*)'] };
 		for (const url of ['/', '/about', '/api/orders', '/_tinytrack/tracker.js', '/_tinytrack/track']) {
 			expect(doesProxyMatch({ config, nextConfig: {}, url }), url).toBe(true);
 		}

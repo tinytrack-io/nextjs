@@ -81,3 +81,8 @@ export type TinyTrackClientOptions = Pick<
 	TrackerOptions,
 	'websiteId' | 'domain' | 'pathPrefix' | 'serverPageviews' | 'enabled' | 'nonce' | 'allowLocalhost'
 >;
+
+export type TinyTrackProps = TinyTrackClientOptions & {
+	/** Match next.config's basePath when the app is deployed under a subpath. */
+	basePath?: string;
+};

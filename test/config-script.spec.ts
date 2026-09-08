@@ -3,7 +3,7 @@ import { resolveConfig } from '../src/config';
 import { buildScriptTag, getTrackerAttributes } from '../src/script';
 
 describe('configuration and tracker installation', () => {
-	it('derives the site domain and applies options before env values', () => {
+	it('preserves www in the site domain and applies options before env values', () => {
 		const cfg = resolveConfig(
 			new Request('https://www.example.com/'),
 			{ websiteId: 'explicit', serverPageviews: false },
@@ -15,7 +15,7 @@ describe('configuration and tracker installation', () => {
 		);
 		expect(cfg).toMatchObject({
 			websiteId: 'explicit',
-			domain: 'example.com',
+			domain: 'www.example.com',
 			prefix: '/analytics',
 			scriptPath: '/analytics/tracker.js',
 			trackPath: '/analytics/track',

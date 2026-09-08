@@ -1,103 +1,105 @@
 # @tinytrack/nextjs
 
-[TinyTrack](https://tinytrack.io) analytics for Next.js based deployments.
+[TinyTrack](https://tinytrack.io) analytics with the tracker and events served through your own domain.
 
-A proxy that counts pageviews server-side, auto-injects the TinyTrack script, and serves the tracker and beacons first-party.
+Requirements:
+
+- [tinytrack websiteId](https://docs.tinytrack.io/website-id)
+- nextjs 14+
 
 ## Install
 
-### 1. Install the tinytrack module
+### 1. Install tinytrack package
+
 ```sh
 npm install @tinytrack/nextjs
 ```
 
-### 2. Set `TINYTRACK_WEBSITE_ID=your_website_id` in the app's `.env`
+## 2. Add the proxy
 
-### 3. Configure Proxy
-
-Create `proxy.ts` alongside `app` or `pages` (inside `src` if used):
+Create `proxy.ts` at the root of `src/`:
 
 ```ts
-import { createTinyTrackProxy } from '@tinytrack/nextjs';
+// src/proxy.ts
+import withTinyTrack from '@tinytrack/nextjs';
 
-export const proxy = createTinyTrackProxy();
+export const proxy = withTinyTrack({ websiteId: 'your_website_id' });
 
 export const config = {
 	matcher: ['/((?!_next/static|_next/image).*)'],
 };
 ```
 
-### 4. Browser tracker
-
-For **Next.js 16.3+**, wrap `next.config.ts` with `withTinyTrack()`:
+**Next.js 14+:** use `middleware.ts` at root of `src/` with a `middleware` export instead:
 
 ```ts
-import type { NextConfig } from 'next';
-import { withTinyTrack } from '@tinytrack/nextjs/next';
+// src/middleware.ts
+import withTinyTrack from '@tinytrack/nextjs';
 
-const nextConfig: NextConfig = {};
+export const middleware = withTinyTrack({ websiteId: 'your_website_id' });
 
-export default withTinyTrack(nextConfig);
-```
-
-This appends the client loader to [`instrumentationClientInject`](https://nextjs.org/docs/app/api-reference/config/next-config-js/instrumentationClientInject).
-
-Also accepts `domain`, `enabled`, `allowLocalhost`, and `nonce`.
-
-For **Next.js 16.0–16.2**, use the generated browser settings with an explicit client import:
-
-```ts
-// next.config.ts
-import type { NextConfig } from 'next';
-import { withTinyTrack } from '@tinytrack/nextjs/next';
-
-const nextConfig: NextConfig = {};
-
-export default {
-	...nextConfig,
-	env: withTinyTrack(nextConfig).env,
+export const config = {
+	matcher: ['/((?!_next/static|_next/image).*)'],
 };
 ```
 
-```ts
-// instrumentation-client.ts — alongside app/ or inside src/
-import '@tinytrack/nextjs/client';
-```
+## 3. Add the tracker
 
-## Manual installation
+Choose your router and add the component once.
 
-To render browser settings per request, add a `next/script` to your root layout instead. Set `TINYTRACK_DOMAIN` to your site's public hostname for this manual setup; the tracker requires `data-domain`:
+### App Router
+
+Add the tracker inside your existing server layout's `<body>`:
 
 ```tsx
-import Script from 'next/script';
+// app/layout.tsx
+import type { ReactNode } from 'react';
+import { TinyTrack } from '@tinytrack/nextjs/react';
 
-<Script
-	src="/_tinytrack/tracker.js"
-	data-website-id={process.env.TINYTRACK_WEBSITE_ID}
-	data-domain={process.env.TINYTRACK_DOMAIN}
-	data-api="/_tinytrack/track"
-	data-skip-initial="true"
-	strategy="afterInteractive"
-/>;
+export default function RootLayout({ children }: { children: ReactNode }) {
+	return (
+		<html lang="en">
+			<body>
+				{children}
+				<TinyTrack websiteId="your_website_id" />
+			</body>
+		</html>
+	);
+}
 ```
 
-Install it once. `getTrackerAttributes()` from `@tinytrack/nextjs/script` builds these attributes from the same options.
+### Pages Router
 
-## Configuration
+Add the tracker alongside your page component:
 
-Pass options to `createTinyTrackProxy()`, or use environment variables. Options take precedence.
+```tsx
+// pages/_app.tsx
+import type { AppProps } from 'next/app';
+import { TinyTrack } from '@tinytrack/nextjs/react/client';
 
-| Option              | Environment variable         | Default                        |
-| ------------------- | ---------------------------- | ------------------------------ |
-| `websiteId` †       | `TINYTRACK_WEBSITE_ID`       | Required for analytics         |
-| `domain` †          | `TINYTRACK_DOMAIN`           | Public hostname without `www.` |
-| `pathPrefix` †      | `TINYTRACK_PATH_PREFIX`      | `/_tinytrack`                  |
-| `serverPageviews` † | `TINYTRACK_SERVER_PAGEVIEWS` | `true`                         |
-| `enabled` †         | `TINYTRACK_ENABLED`          | `true`                         |
-| `trustProxy`        | `TINYTRACK_TRUST_PROXY`      | `1`                            |
-| `geoHeaders`        | `TINYTRACK_GEO_HEADERS`      | None                           |
-| `debug`             | `TINYTRACK_DEBUG`            | `false`                        |
+export default function App({ Component, pageProps }: AppProps) {
+	return (
+		<>
+			<Component {...pageProps} />
+			<TinyTrack websiteId="your_website_id" />
+		</>
+	);
+}
+```
 
-† also read by `withTinyTrack()` at build time.
+### Optional: environment variable
 
-Browser and Proxy settings must agree on website ID, paths, and pageview mode. For browser-only pageviews, set `serverPageviews: false` and `data-skip-initial="false"`.
+Omit `websiteId` from both the middleware and tracker, and set this in `.env.local` and your hosting environment **before building**:
+
+```dotenv
+TINYTRACK_WEBSITE_ID=your_website_id
+```
+
+**Pages Router only:** also add this `env` entry to your Next.js config so the tracker can read the ID in the browser:
+
+```js
+// next.config.mjs
+export default {
+	env: { TINYTRACK_WEBSITE_ID: process.env.TINYTRACK_WEBSITE_ID },
+};
+```

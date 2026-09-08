@@ -64,7 +64,7 @@ export function resolveConfig(request: Request, options: TinyTrackOptions = {}, 
 	const trustProxy = resolveTrustProxy(options.trustProxy, env.TINYTRACK_TRUST_PROXY);
 	return {
 		websiteId: (options.websiteId ?? env.TINYTRACK_WEBSITE_ID ?? '').trim(),
-		domain: (options.domain ?? env.TINYTRACK_DOMAIN ?? getRequestUrl(request, trustProxy).hostname.replace(/^www\./, '')).trim(),
+		domain: (options.domain ?? env.TINYTRACK_DOMAIN ?? getRequestUrl(request, trustProxy).hostname).trim(),
 		prefix,
 		scriptPath: prefix + '/tracker.js',
 		trackPath: prefix + '/track',

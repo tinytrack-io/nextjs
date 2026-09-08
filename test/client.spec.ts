@@ -6,6 +6,7 @@ import type { TinyTrackClientOptions } from '../src/types';
 let dom: JSDOM;
 
 beforeEach(() => {
+	vi.stubEnv('TINYTRACK_WEBSITE_ID', undefined);
 	dom = new JSDOM('<!doctype html><html><head></head><body></body></html>', { url: 'https://site.example/about' });
 	vi.stubGlobal('document', dom.window.document);
 	vi.spyOn(document, 'readyState', 'get').mockReturnValue('complete');
@@ -38,10 +39,10 @@ describe('automatic client loader', () => {
 		});
 	});
 
-	it('supplies the page hostname required by tracker.js when no domain is configured', async () => {
+	it('preserves www in the page hostname supplied to tracker.js when no domain is configured', async () => {
 		dom.reconfigure({ url: 'https://www.site.example/about' });
 		await inject();
-		expect(document.scripts[0].dataset.domain).toBe('site.example');
+		expect(document.scripts[0].dataset.domain).toBe('www.site.example');
 	});
 
 	it('waits for the document to be parsed and loads once across repeated initialization', async () => {
