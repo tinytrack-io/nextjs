@@ -17,13 +17,13 @@ npm install @tinytrack/nextjs
 
 ## 2. Add the proxy
 
-Create `proxy.ts` at the root of `src/`:
+**Next.js 16:** create `proxy.ts` at the root of `src/`:
 
 ```ts
 // src/proxy.ts
-import withTinyTrack from '@tinytrack/nextjs';
+import { createTinyTrackProxy } from '@tinytrack/nextjs';
 
-export const proxy = withTinyTrack({ websiteId: 'your_website_id' });
+export const proxy = createTinyTrackProxy({ websiteId: 'your_website_id' });
 
 export const config = {
 	matcher: ['/((?!_next/static|_next/image).*)'],
@@ -34,14 +34,26 @@ export const config = {
 
 ```ts
 // src/middleware.ts
-import withTinyTrack from '@tinytrack/nextjs';
+import { createTinyTrackMiddleware } from '@tinytrack/nextjs';
 
-export const middleware = withTinyTrack({ websiteId: 'your_website_id' });
+export const middleware = createTinyTrackMiddleware({ websiteId: 'your_website_id' });
 
 export const config = {
 	matcher: ['/((?!_next/static|_next/image).*)'],
 };
 ```
+
+**Already have middleware or a proxy?** Rename your existing handler to `appMiddleware` and wrap it using the named import:
+
+```ts
+import { withTinyTrackMiddleware } from '@tinytrack/nextjs';
+
+export const middleware = withTinyTrackMiddleware(appMiddleware, {
+	websiteId: 'your_website_id',
+});
+```
+
+For `proxy.ts`, export `proxy` instead. Keep your existing matcher entries and add `/_tinytrack/:path*`.
 
 ## 3. Add the tracker
 
