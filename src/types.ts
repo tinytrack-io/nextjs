@@ -18,7 +18,7 @@ export interface TinyTrackOptions {
 	websiteId?: string;
 	domain?: string;
 	pathPrefix?: string;
-	/** Default true. Set false to let tracker.js count the initial pageview. */
+	/** Default false. tracker.js counts pageviews unless server tracking is explicitly enabled. */
 	serverPageviews?: boolean;
 	enabled?: boolean;
 	debug?: boolean;

@@ -38,7 +38,7 @@ describe('Next.js Proxy integration', () => {
 		expect(calls).toHaveLength(0);
 	});
 
-	it('serves tracking endpoints before existing middleware and counts ordinary pages once', async () => {
+	it('serves tracking endpoints before existing middleware without counting ordinary pages', async () => {
 		const { calls } = mockFetch((outgoing) =>
 			new URL(outgoing.url).pathname === '/tracker.js' ? new Response('window.tracker = true;') : new Response(null, { status: 204 }),
 		);
@@ -53,11 +53,11 @@ describe('Next.js Proxy integration', () => {
 		await middleware(documentRequest('/about'), bg.event);
 		await bg.drain();
 		expect(existing).toHaveBeenCalledOnce();
-		expect(calls).toHaveLength(3);
-		expect((await events(calls[2]))[0].event).toBe('page_view');
+		expect(calls).toHaveLength(2);
+		expect((await events(calls[1]))[0].event).toBe('scroll_depth');
 	});
 
-	it('returns NextResponse.next while registering analytics with this invocation’s event', async () => {
+	it('returns NextResponse.next while registering explicitly enabled server analytics with this invocation’s event', async () => {
 		let finish!: (response: Response) => void;
 		const { calls } = mockFetch(
 			() =>
@@ -66,7 +66,7 @@ describe('Next.js Proxy integration', () => {
 				}),
 		);
 		const bg = invocation();
-		const proxy = createTinyTrackProxy(OPTIONS) satisfies NextProxy;
+		const proxy = createTinyTrackProxy({ ...OPTIONS, serverPageviews: true }) satisfies NextProxy;
 		const response = await proxy(documentRequest('/pricing'), bg.event);
 		expect(response).toBeInstanceOf(NextResponse);
 		expect(response.headers.get('x-middleware-next')).toBe('1');
@@ -106,6 +106,7 @@ describe('Next.js Proxy integration', () => {
 	});
 	it('reads environment settings at request time in a proxy created without options', async () => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
+		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'true');
 		vi.stubEnv('TINYTRACK_TRUST_PROXY', '1');
 		const { calls } = mockFetch();
 		const bg = invocation();
@@ -117,12 +118,13 @@ describe('Next.js Proxy integration', () => {
 	it('omits visitor IP when forwarding headers are explicitly untrusted', async () => {
 		const { calls } = mockFetch();
 		const bg = invocation();
-		await createTinyTrackProxy({ websiteId: 'wid_test', trustProxy: 0 })(documentRequest('/'), bg.event);
+		await createTinyTrackProxy({ websiteId: 'wid_test', trustProxy: 0, serverPageviews: true })(documentRequest('/'), bg.event);
 		await bg.drain();
 		expect(calls[0].headers.has('x-tinytrack-ip')).toBe(false);
 	});
 	it('forwards distinct visitors from standard headers on server pageviews and browser events', async () => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
+		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'true');
 		const { calls } = mockFetch();
 		const bg = invocation();
 		const visitors = ['203.0.113.42', '198.51.100.7'];
@@ -147,6 +149,7 @@ describe('Next.js Proxy integration', () => {
 	});
 	it('marks forwarded events even when the visitor IP is missing', async () => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
+		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'true');
 		const { calls } = mockFetch();
 		const bg = invocation();
 		const incoming = documentRequest('/');

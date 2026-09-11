@@ -53,7 +53,7 @@ describe('automatic client loader', () => {
 		document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
 		document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
 		expect(document.scripts).toHaveLength(1);
-		expect(document.scripts[0].dataset.skipInitial).toBe('true');
+		expect(document.scripts[0].dataset.skipInitial).toBe('false');
 		vi.spyOn(document, 'readyState', 'get').mockReturnValue('complete');
 		await inject();
 		expect(document.scripts).toHaveLength(1);

@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe('request handler', () => {
-	it('returns null immediately while one pageview is delivered in the background', async () => {
+	it('returns null immediately while an explicitly enabled pageview is delivered in the background', async () => {
 		let finish!: (response: Response) => void;
 		const { calls } = mockFetch(
 			() =>
@@ -27,7 +27,7 @@ describe('request handler', () => {
 				}),
 		);
 		const bg = background();
-		const response = await createTinyTrackHandler(OPTIONS)(
+		const response = await createTinyTrackHandler({ ...OPTIONS, serverPageviews: true })(
 			documentRequest('/pricing', {
 				referer: 'https://ref.example/',
 				'accept-language': 'de-AT,de;q=0.9',
@@ -68,6 +68,7 @@ describe('request handler', () => {
 	});
 	it('reads configuration from the environment', async () => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
+		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'true');
 		vi.stubEnv('TINYTRACK_GEO_HEADERS', 'country_iso:x-geo-country');
 		const { calls } = mockFetch();
 		const bg = background();
@@ -78,8 +79,8 @@ describe('request handler', () => {
 		expect(event.country_iso).toBe('AT');
 		expect(event.city_name).toBeUndefined();
 	});
-	it.each([{}, { ...OPTIONS, enabled: false }, { ...OPTIONS, serverPageviews: false }])(
-		'does not schedule pageviews for inactive config %j',
+	it.each([{}, OPTIONS, { ...OPTIONS, enabled: false }, { ...OPTIONS, serverPageviews: false }])(
+		'does not schedule pageviews by default or when disabled: %j',
 		async (options) => {
 			const { calls } = mockFetch();
 			const bg = background();
@@ -91,7 +92,7 @@ describe('request handler', () => {
 	it('does not count static, prefetch, or framework data traffic', async () => {
 		const { calls } = mockFetch();
 		const bg = background();
-		const handler = createTinyTrackHandler(OPTIONS);
+		const handler = createTinyTrackHandler({ ...OPTIONS, serverPageviews: true });
 		for (const input of [
 			documentRequest('/app.js'),
 			documentRequest('/about', { rsc: '1' }),
@@ -108,7 +109,7 @@ describe('request handler', () => {
 		});
 		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const bg = background();
-		expect(await createTinyTrackHandler(OPTIONS)(documentRequest(), bg.context)).toBeNull();
+		expect(await createTinyTrackHandler({ ...OPTIONS, serverPageviews: true })(documentRequest(), bg.context)).toBeNull();
 		await expect(bg.drain()).resolves.toBeDefined();
 		expect(error).toHaveBeenCalledOnce();
 	});

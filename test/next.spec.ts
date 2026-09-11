@@ -35,11 +35,11 @@ describe('Next.js config wrapper', () => {
 		expect(withTinyTrack(config, { websiteId: 'wid' })).toEqual(config);
 	});
 
-	it('uses the same environment configuration as Proxy for paths and initial pageviews', () => {
+	it.each([undefined, 'false', 'true'])('uses the same environment configuration as Proxy with server pageviews %s', (serverPageviews) => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', ' wid_env ');
 		vi.stubEnv('TINYTRACK_DOMAIN', ' site.example ');
 		vi.stubEnv('TINYTRACK_PATH_PREFIX', 'Analytics/');
-		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'false');
+		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', serverPageviews);
 		const server = resolveConfig(new Request('https://site.example'));
 		expect(attributes(withTinyTrack())).toEqual({
 			src: server.scriptPath,
@@ -79,9 +79,9 @@ describe('Next.js config wrapper', () => {
 		});
 	});
 
-	it('suppresses the initial browser pageview by default and lets the tracker infer the domain', () => {
+	it('enables the initial browser pageview by default and lets the tracker infer the domain', () => {
 		const client = attributes(withTinyTrack({}, { websiteId: 'wid' }));
-		expect(client['data-skip-initial']).toBe('true');
+		expect(client['data-skip-initial']).toBe('false');
 		expect(client).not.toHaveProperty('data-domain');
 	});
 
@@ -112,7 +112,7 @@ describe('Next.js config wrapper', () => {
 				defer: true,
 				'data-website-id': 'wid',
 				'data-api': '/_tinytrack/track',
-				'data-skip-initial': 'true',
+				'data-skip-initial': 'false',
 			}),
 		});
 	});

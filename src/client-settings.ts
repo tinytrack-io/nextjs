@@ -10,7 +10,7 @@ export function getClientAttributes(options: TinyTrackClientOptions = {}, basePa
 		websiteId,
 		domain: (options.domain ?? process.env.TINYTRACK_DOMAIN)?.trim(),
 		pathPrefix: options.pathPrefix ?? process.env.TINYTRACK_PATH_PREFIX,
-		serverPageviews: options.serverPageviews ?? process.env.TINYTRACK_SERVER_PAGEVIEWS !== 'false',
+		serverPageviews: options.serverPageviews ?? process.env.TINYTRACK_SERVER_PAGEVIEWS === 'true',
 		allowLocalhost: options.allowLocalhost,
 		nonce: options.nonce,
 	});

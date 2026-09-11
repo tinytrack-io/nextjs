@@ -57,7 +57,11 @@ describe('configuration and tracker installation', () => {
 		expect(() => resolveConfig(new Request('https://example.com'), {}, { TINYTRACK_GEO_HEADERS })).toThrow('TINYTRACK_GEO_HEADERS');
 	});
 	it('uses standard proxy defaults without host-specific configuration', () => {
-		expect(resolveConfig(new Request('https://example.com'), {}, {})).toMatchObject({ trustProxy: 1, geoHeaders: {} });
+		expect(resolveConfig(new Request('https://example.com'), {}, {})).toMatchObject({
+			trustProxy: 1,
+			geoHeaders: {},
+			serverPageviews: false,
+		});
 	});
 	it('lets explicit options override environment settings, including disabling IP forwarding', () => {
 		const env = { TINYTRACK_TRUST_PROXY: '2', TINYTRACK_GEO_HEADERS: 'country_iso:x-country' };
@@ -67,7 +71,8 @@ describe('configuration and tracker installation', () => {
 		});
 	});
 	it('pairs browser initial-pageview suppression with server tracking', () => {
-		expect(getTrackerAttributes({ websiteId: 'wid' })['data-skip-initial']).toBe('true');
+		expect(getTrackerAttributes({ websiteId: 'wid' })['data-skip-initial']).toBe('false');
+		expect(getTrackerAttributes({ websiteId: 'wid', serverPageviews: true })['data-skip-initial']).toBe('true');
 		expect(getTrackerAttributes({ websiteId: 'wid', serverPageviews: false })['data-skip-initial']).toBe('false');
 		expect(getTrackerAttributes({ websiteId: 'wid' })).not.toHaveProperty('data-allow-localhost');
 	});

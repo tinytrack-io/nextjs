@@ -10,7 +10,7 @@ export function getTrackerAttributes(options: TrackerOptions) {
 		'data-website-id': options.websiteId ?? '',
 		...(options.domain ? { 'data-domain': options.domain } : {}),
 		'data-api': prefix + '/track',
-		'data-skip-initial': String(options.serverPageviews ?? true),
+		'data-skip-initial': String(options.serverPageviews ?? false),
 		...(options.allowLocalhost ? { 'data-allow-localhost': 'true' } : {}),
 		...(options.nonce ? { nonce: options.nonce } : {}),
 	};

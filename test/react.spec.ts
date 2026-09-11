@@ -19,11 +19,11 @@ describe('Pages Router component', () => {
 	it('uses explicit browser settings without depending on server-only environment values', () => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_env');
 		vi.stubEnv('TINYTRACK_PATH_PREFIX', '/server-only');
-		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'false');
+		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'true');
 		expect(BrowserTinyTrack()?.props.attributes).toMatchObject({
 			src: '/_tinytrack/tracker.js',
 			'data-website-id': 'wid_env',
-			'data-skip-initial': 'true',
+			'data-skip-initial': 'false',
 		});
 		expect(
 			BrowserTinyTrack({ websiteId: 'explicit', basePath: '/docs', pathPrefix: '/stats', serverPageviews: false })?.props.attributes,
@@ -60,7 +60,7 @@ describe('App Router component', () => {
 				defer: true,
 				'data-website-id': 'wid_env',
 				'data-api': '/_tinytrack/track',
-				'data-skip-initial': 'true',
+				'data-skip-initial': 'false',
 			},
 		});
 	});
