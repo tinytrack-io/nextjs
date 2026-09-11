@@ -1,25 +1,23 @@
 import { API_URL } from './config';
 import { getRequestUrl } from './request-url';
 import type { Config } from './types';
-import { forwardingHeaders, getVisitorContext } from './visitor';
+import { clientAddress, forwardingHeaders } from './visitor';
 
-export async function trackPageview(request: Request, cfg: Config): Promise<void> {
-	const visitor = getVisitorContext(request, cfg);
-	const { ip: _ip, ...geo } = visitor;
+export async function trackServerRequest(request: Request, cfg: Config): Promise<void> {
+	const ip = clientAddress(request, cfg.trustProxy);
 	const response = await fetch(API_URL, {
 		method: 'POST',
-		headers: forwardingHeaders(request, visitor),
+		headers: forwardingHeaders(request, { ip }),
 		body: JSON.stringify({
 			events: [
 				{
 					domain: cfg.domain,
 					websiteId: cfg.websiteId,
-					event: 'page_view',
-					name: 'page_view',
+					event: 'server_request',
+					name: 'server_request',
 					url: getRequestUrl(request, cfg.trustProxy).href,
 					referrer: request.headers.get('referer') ?? '',
 					languages: (request.headers.get('accept-language') ?? '').split(',')[0].trim(),
-					...geo,
 				},
 			],
 		}),

@@ -57,6 +57,7 @@ export async function forwardBeacon(request: Request, cfg: Config): Promise<Resp
 	const events = 'events' in parsed ? parsed.events : [parsed];
 	if (!Array.isArray(events) || !events.length || !events.every(isRecord)) return jsonError('invalid events batch', 400);
 	if (events.length > MAX_BATCH_EVENTS) return jsonError('too many events', 413);
+	if (events.some((event) => event.event === 'server_request')) return jsonError('server_request is reserved for the server', 400);
 
 	const visitor = getVisitorContext(request, cfg);
 	const { ip: _ip, ...geo } = visitor;

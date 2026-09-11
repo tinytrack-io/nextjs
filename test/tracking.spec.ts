@@ -8,6 +8,7 @@ beforeEach(() => {
 		'TINYTRACK_WEBSITE_ID',
 		'TINYTRACK_DOMAIN',
 		'TINYTRACK_PATH_PREFIX',
+		'TINYTRACK_SERVER_REQUESTS',
 		'TINYTRACK_SERVER_PAGEVIEWS',
 		'TINYTRACK_ENABLED',
 		'TINYTRACK_DEBUG',
@@ -18,7 +19,19 @@ beforeEach(() => {
 });
 
 describe('request handler', () => {
-	it('returns null immediately while an explicitly enabled pageview is delivered in the background', async () => {
+	it.each(['Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36', 'Googlebot/2.1', 'GPTBot/1.0', 'UnknownCrawler/1.0'])(
+		'sends %s page requests for central classification without creating pageviews',
+		async (ua) => {
+			const { calls } = mockFetch();
+			const bg = background();
+			await createTinyTrackHandler(OPTIONS)(request('/article', { headers: { 'user-agent': ua, accept: '*/*' } }), bg.context);
+			await bg.drain();
+			expect(calls).toHaveLength(1);
+			expect(calls[0].headers.get('user-agent')).toBe(ua);
+			expect(await events(calls[0])).toEqual([expect.objectContaining({ event: 'server_request', name: 'server_request' })]);
+		},
+	);
+	it('schedules a server observation by default without delaying the page response', async () => {
 		let finish!: (response: Response) => void;
 		const { calls } = mockFetch(
 			() =>
@@ -27,7 +40,7 @@ describe('request handler', () => {
 				}),
 		);
 		const bg = background();
-		const response = await createTinyTrackHandler({ ...OPTIONS, serverPageviews: true })(
+		const response = await createTinyTrackHandler(OPTIONS)(
 			documentRequest('/pricing', {
 				referer: 'https://ref.example/',
 				'accept-language': 'de-AT,de;q=0.9',
@@ -43,16 +56,11 @@ describe('request handler', () => {
 			{
 				domain: 'site.example',
 				websiteId: 'wid_test',
-				event: 'page_view',
-				name: 'page_view',
+				event: 'server_request',
+				name: 'server_request',
 				url: 'https://site.example/pricing',
 				referrer: 'https://ref.example/',
 				languages: 'de-AT',
-				country_iso: 'AT',
-				region: '9',
-				city_name: 'Wien',
-				latitude: '48.2082',
-				longitude: '16.3738',
 			},
 		]);
 		finish(new Response(null, { status: 204 }));
@@ -66,9 +74,9 @@ describe('request handler', () => {
 		expect(await post.text()).toBe('order=123');
 		expect(calls).toHaveLength(0);
 	});
-	it('reads configuration from the environment', async () => {
+	it('reads configuration from the environment while omitting configured geo from server observations', async () => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', 'wid_environment');
-		vi.stubEnv('TINYTRACK_SERVER_PAGEVIEWS', 'true');
+		vi.stubEnv('TINYTRACK_SERVER_REQUESTS', 'true');
 		vi.stubEnv('TINYTRACK_GEO_HEADERS', 'country_iso:x-geo-country');
 		const { calls } = mockFetch();
 		const bg = background();
@@ -76,11 +84,11 @@ describe('request handler', () => {
 		await bg.drain();
 		const [event] = await events(calls[0]);
 		expect(event.websiteId).toBe('wid_environment');
-		expect(event.country_iso).toBe('AT');
+		expect(event.country_iso).toBeUndefined();
 		expect(event.city_name).toBeUndefined();
 	});
-	it.each([{}, OPTIONS, { ...OPTIONS, enabled: false }, { ...OPTIONS, serverPageviews: false }])(
-		'does not schedule pageviews by default or when disabled: %j',
+	it.each([{}, { ...OPTIONS, enabled: false }, { ...OPTIONS, serverRequests: false }])(
+		'does not schedule observations without a website or when disabled: %j',
 		async (options) => {
 			const { calls } = mockFetch();
 			const bg = background();
@@ -92,7 +100,7 @@ describe('request handler', () => {
 	it('does not count static, prefetch, or framework data traffic', async () => {
 		const { calls } = mockFetch();
 		const bg = background();
-		const handler = createTinyTrackHandler({ ...OPTIONS, serverPageviews: true });
+		const handler = createTinyTrackHandler({ ...OPTIONS, serverRequests: true });
 		for (const input of [
 			documentRequest('/app.js'),
 			documentRequest('/about', { rsc: '1' }),
@@ -109,11 +117,11 @@ describe('request handler', () => {
 		});
 		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const bg = background();
-		expect(await createTinyTrackHandler({ ...OPTIONS, serverPageviews: true })(documentRequest(), bg.context)).toBeNull();
+		expect(await createTinyTrackHandler({ ...OPTIONS, serverRequests: true })(documentRequest(), bg.context)).toBeNull();
 		await expect(bg.drain()).resolves.toBeDefined();
 		expect(error).toHaveBeenCalledOnce();
 	});
-	it('handles browser batches without adding a server pageview', async () => {
+	it('handles browser batches without adding a server observation', async () => {
 		const { calls } = mockFetch();
 		const bg = background();
 		const response = await createTinyTrackHandler(OPTIONS)(

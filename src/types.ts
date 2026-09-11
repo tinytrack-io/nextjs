@@ -3,6 +3,8 @@ export interface Env {
 	TINYTRACK_WEBSITE_ID?: string;
 	TINYTRACK_DOMAIN?: string;
 	TINYTRACK_PATH_PREFIX?: string;
+	TINYTRACK_SERVER_REQUESTS?: string;
+	/** @deprecated Use TINYTRACK_SERVER_REQUESTS. */
 	TINYTRACK_SERVER_PAGEVIEWS?: string;
 	TINYTRACK_ENABLED?: string;
 	TINYTRACK_DEBUG?: string;
@@ -18,7 +20,9 @@ export interface TinyTrackOptions {
 	websiteId?: string;
 	domain?: string;
 	pathPrefix?: string;
-	/** Default false. tracker.js counts pageviews unless server tracking is explicitly enabled. */
+	/** Default true. Send server_request observations for ingestion to classify as crawler/AI bot traffic. */
+	serverRequests?: boolean;
+	/** @deprecated Alias for serverRequests. Never counts pageviews or suppresses tracker.js. */
 	serverPageviews?: boolean;
 	enabled?: boolean;
 	debug?: boolean;
@@ -28,7 +32,7 @@ export interface TinyTrackOptions {
 	 * NextRequest exposes no socket address.
 	 */
 	trustProxy?: boolean | number;
-	/** Optional custom location headers. Default none; ingestion resolves location from the visitor IP. */
+	/** Optional custom location headers for browser events. Default none. Server observations never include geo fields. */
 	geoHeaders?: GeoHeaderMap;
 	/** Server-side only: storage for the tracker asset. Defaults to a per-process cache. */
 	cache?: TrackerCache;
@@ -40,7 +44,7 @@ export interface Config {
 	prefix: string;
 	scriptPath: string;
 	trackPath: string;
-	serverPageviews: boolean;
+	serverRequests: boolean;
 	enabled: boolean;
 	debug: boolean;
 	trustProxy: number;

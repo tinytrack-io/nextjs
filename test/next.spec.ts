@@ -35,7 +35,7 @@ describe('Next.js config wrapper', () => {
 		expect(withTinyTrack(config, { websiteId: 'wid' })).toEqual(config);
 	});
 
-	it.each([undefined, 'false', 'true'])('uses the same environment configuration as Proxy with server pageviews %s', (serverPageviews) => {
+	it.each([undefined, 'false', 'true'])('keeps browser pageviews enabled with legacy server configuration %s', (serverPageviews) => {
 		vi.stubEnv('TINYTRACK_WEBSITE_ID', ' wid_env ');
 		vi.stubEnv('TINYTRACK_DOMAIN', ' site.example ');
 		vi.stubEnv('TINYTRACK_PATH_PREFIX', 'Analytics/');
@@ -47,7 +47,7 @@ describe('Next.js config wrapper', () => {
 			'data-api': server.trackPath,
 			'data-website-id': server.websiteId,
 			'data-domain': server.domain,
-			'data-skip-initial': String(server.serverPageviews),
+			'data-skip-initial': 'false',
 		});
 	});
 

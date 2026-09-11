@@ -12,6 +12,14 @@ const beacon = (body: unknown, headers: HeadersInit = {}) =>
 	});
 
 describe('first-party beacons', () => {
+	it.each([{ event: 'server_request' }, { events: [{ event: 'page_view' }, { event: 'server_request' }] }])(
+		'rejects browser attempts to submit reserved server observations: %j',
+		async (body) => {
+			const { calls } = mockFetch();
+			expect((await forwardBeacon(beacon(body), cfg)).status).toBe(400);
+			expect(calls).toHaveLength(0);
+		},
+	);
 	it('normalizes single events and forwards the existing TinyTrack contract', async () => {
 		const { calls } = mockFetch();
 		const response = await forwardBeacon(

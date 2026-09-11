@@ -6,6 +6,12 @@ import { documentRequest, request } from './helpers';
 const track = (input: NextRequest) => shouldTrackRequest(input, '/_tinytrack');
 
 describe('document request detection', () => {
+	it.each([undefined, '', '*/*', 'text/html', 'application/json', 'text/html;q=0', '*/*;q=0'])(
+		'observes eligible requests regardless of Accept: %s',
+		(accept) => {
+			expect(track(request('/article', { headers: accept === undefined ? {} : { accept } }))).toBe(true);
+		},
+	);
 	it('tracks document navigations and crawlers accepting HTML', () => {
 		expect(track(documentRequest('/pricing?utm_source=test'))).toBe(true);
 		expect(track(request('/blog', { headers: { accept: 'text/html,application/xhtml+xml' } }))).toBe(true);
@@ -47,12 +53,6 @@ describe('document request detection', () => {
 		expect(track(documentRequest('/about?_rsc=abc'))).toBe(false);
 		expect(track(documentRequest('/about', { 'sec-fetch-dest': 'empty' }))).toBe(false);
 		expect(track(documentRequest('/about', { 'sec-fetch-dest': 'iframe' }))).toBe(false);
-	});
-	it('requires HTML Accept without Fetch Metadata and respects q=0', () => {
-		for (const accept of ['', '*/*', 'application/json', 'text/html;q=0', 'text/html;q=0.000,application/json']) {
-			expect(track(request('/feed', { headers: { accept } })), accept).toBe(false);
-		}
-		expect(track(request('/page', { headers: { accept: 'text/html;q=0.5' } }))).toBe(true);
 	});
 	it.each(['HEAD', 'POST', 'OPTIONS'])('does not count %s', (method) => {
 		expect(track(request('/', { method, headers: { 'sec-fetch-dest': 'document' } }))).toBe(false);

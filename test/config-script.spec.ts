@@ -3,14 +3,25 @@ import { resolveConfig } from '../src/config';
 import { buildScriptTag, getTrackerAttributes } from '../src/script';
 
 describe('configuration and tracker installation', () => {
+	it.each([
+		[{}, {}, true],
+		[{}, { TINYTRACK_SERVER_REQUESTS: 'false' }, false],
+		[{}, { TINYTRACK_SERVER_PAGEVIEWS: 'false' }, false],
+		[{}, { TINYTRACK_SERVER_REQUESTS: 'true', TINYTRACK_SERVER_PAGEVIEWS: 'false' }, true],
+		[{ serverPageviews: true }, {}, true],
+		[{ serverRequests: false, serverPageviews: true }, {}, false],
+		[{ serverRequests: true }, { TINYTRACK_SERVER_REQUESTS: 'false' }, true],
+	] as const)('resolves server observations from options %j and env %j', (options, env, expected) => {
+		expect(resolveConfig(new Request('https://example.com'), options, env).serverRequests).toBe(expected);
+	});
 	it('preserves www in the site domain and applies options before env values', () => {
 		const cfg = resolveConfig(
 			new Request('https://www.example.com/'),
-			{ websiteId: 'explicit', serverPageviews: false },
+			{ websiteId: 'explicit', serverRequests: false },
 			{
 				TINYTRACK_WEBSITE_ID: 'env',
 				TINYTRACK_PATH_PREFIX: 'Analytics/',
-				TINYTRACK_SERVER_PAGEVIEWS: 'true',
+				TINYTRACK_SERVER_REQUESTS: 'true',
 			},
 		);
 		expect(cfg).toMatchObject({
@@ -19,7 +30,7 @@ describe('configuration and tracker installation', () => {
 			prefix: '/analytics',
 			scriptPath: '/analytics/tracker.js',
 			trackPath: '/analytics/track',
-			serverPageviews: false,
+			serverRequests: false,
 		});
 	});
 	it.each(['https://evil.example', '//evil.example/path', '/a?b=1', '/a#b', '/a/../b', '/a\\b'])(
@@ -60,7 +71,7 @@ describe('configuration and tracker installation', () => {
 		expect(resolveConfig(new Request('https://example.com'), {}, {})).toMatchObject({
 			trustProxy: 1,
 			geoHeaders: {},
-			serverPageviews: false,
+			serverRequests: true,
 		});
 	});
 	it('lets explicit options override environment settings, including disabling IP forwarding', () => {
@@ -70,10 +81,10 @@ describe('configuration and tracker installation', () => {
 			geoHeaders: {},
 		});
 	});
-	it('pairs browser initial-pageview suppression with server tracking', () => {
+	it('always enables browser initial pageviews, including legacy server options', () => {
 		expect(getTrackerAttributes({ websiteId: 'wid' })['data-skip-initial']).toBe('false');
-		expect(getTrackerAttributes({ websiteId: 'wid', serverPageviews: true })['data-skip-initial']).toBe('true');
-		expect(getTrackerAttributes({ websiteId: 'wid', serverPageviews: false })['data-skip-initial']).toBe('false');
+		expect(getTrackerAttributes({ websiteId: 'wid', serverPageviews: true })['data-skip-initial']).toBe('false');
+		expect(getTrackerAttributes({ websiteId: 'wid', serverRequests: false })['data-skip-initial']).toBe('false');
 		expect(getTrackerAttributes({ websiteId: 'wid' })).not.toHaveProperty('data-allow-localhost');
 	});
 	it('escapes HTML attributes including CSP nonces and emits just one script', () => {

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server.js';
 import { forwardBeacon, isSameOrigin, jsonError } from './beacon';
 import { resolveConfig } from './config';
-import { trackPageview } from './pageview';
+import { trackServerRequest } from './server-request';
 import { shouldTrackRequest } from './request-filter';
 import { serveTrackerAsset } from './tracker-asset';
 import type { BackgroundContext, TinyTrackOptions } from './types';
@@ -11,7 +11,7 @@ function methodNotAllowed(allow: string): Response {
 }
 
 /**
- * Handles the tracking endpoints and schedules pageviews. Returns null for
+ * Handles the tracking endpoints and schedules server observations. Returns null for
  * application routes, which continue through NextResponse.next().
  */
 export async function handleTinyTrackRequest(
@@ -34,12 +34,12 @@ export async function handleTinyTrackRequest(
 		return forwardBeacon(request, cfg);
 	}
 	if (pathname === cfg.prefix || pathname.startsWith(cfg.prefix + '/')) return jsonError('not found', 404);
-	if (active && cfg.serverPageviews && shouldTrackRequest(request, cfg.prefix)) {
-		if (cfg.debug) console.log('[TinyTrack:debug] scheduling pageview');
+	if (active && cfg.serverRequests && shouldTrackRequest(request, cfg.prefix)) {
+		if (cfg.debug) console.log('[TinyTrack:debug] scheduling server_request');
 		context.waitUntil(
-			trackPageview(request, cfg).catch((error: unknown) => {
+			trackServerRequest(request, cfg).catch((error: unknown) => {
 				// No IPs, request headers, query strings, or event payloads are logged.
-				console.error('[TinyTrack] pageview failed:', error instanceof Error ? error.message : 'unknown error');
+				console.error('[TinyTrack] server_request failed:', error instanceof Error ? error.message : 'unknown error');
 			}),
 		);
 	}
